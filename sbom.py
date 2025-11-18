@@ -42,9 +42,27 @@ def write_to_csv(directory_path: Path, dependencies):
         writer.writerow(["name", "version", "type", "absolute path"])
         writer.writerows(dependencies)
 
+    print(f"Saved SBOM in CSV format to {directory_path}")
 
-def write_to_json():
-    ...
+    return output_file
+
+
+def write_to_json(directory_path: Path, dependencies):
+    output_file = directory_path / "sbom.json"
+
+    json_data = []
+
+    for name, version, pkg, path in dependencies:
+        json_data.append({"name": name,
+                          "version": version,
+                          "type": pkg,
+                          "path": path})
+        
+    with open(output_file, "w") as f:
+        json.dump(json_data, f, indent=4)
+
+    print(f"Saved SBOM in json format to {directory_path}")
+
 
 def main():
     directory_path = Path(sys.argv[1])
@@ -53,25 +71,27 @@ def main():
     dependencies = []
 
     for repo in directory_path.iterdir():
-        repo_counter += 1
-        
         if repo.is_dir():
+            repo_counter += 1
             txt = repo / "requirements.txt"
             json = repo / "package.json"
 
             if txt.exists():
                 txt_deps = read_txt(txt)
+                pkg = "pip"
                 for name, version in txt_deps:
-                    dependencies.append((name, version, "npm", repo))
+                    dependencies.append((name, version, pkg, repo))
             
             if json.exists():
                 json_deps =read_json(json)
+                pkg = "npm"
                 for name, version in json_deps:
-                    dependencies.append((name, version, "pip", repo))
+                    dependencies.append((name, version, pkg, repo))
 
     print(f"Found {repo_counter} repositories in {directory_path}")
     
-    csv = write_to_csv(directory_path, dependencies)
+    csv_file = write_to_csv(directory_path, dependencies)
+    json_file = write_to_json(directory_path, dependencies)
 
 if __name__ == "__main__":
     main()
