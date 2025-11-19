@@ -43,7 +43,7 @@ def write_to_csv(directory_path: Path, dependencies):
         writer.writerow(["name", "version", "type", "absolute path"])
         writer.writerows(dependencies)
 
-    print(f"Saved SBOM in CSV format to {directory_path}")
+    print(f"Saved SBOM in CSV format to {output_file}")
 
     return output_file
 
@@ -64,7 +64,7 @@ def write_to_json(directory_path: Path, dependencies):
     with open(output_file, "w") as f:
         json.dump(json_data, f, indent=4)
 
-    print(f"Saved SBOM in json format to {directory_path}")
+    print(f"Saved SBOM in json format to {output_file}")
 
 
 def main():
@@ -91,9 +91,9 @@ def main():
                 for name, version in json_deps:
                     dependencies.append((name, version, pkg, repo))
    
+    print(f"Found {repo_counter} repositories in {directory_path}")
     write_to_csv(directory_path, dependencies)
     write_to_json(directory_path, dependencies)
-    print(f"Found {repo_counter} repositories in {directory_path}")
 
 if __name__ == "__main__":
     main()
