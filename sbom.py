@@ -34,6 +34,7 @@ def read_json(json_path: Path):
     
     return dependencies
 
+
 def write_to_csv(directory_path: Path, dependencies):
     output_file = directory_path / "sbom.csv"
 
@@ -53,10 +54,12 @@ def write_to_json(directory_path: Path, dependencies):
     json_data = []
 
     for name, version, pkg, path in dependencies:
-        json_data.append({"name": name,
-                          "version": version,
-                          "type": pkg,
-                          "path": path})
+        json_data.append({
+                        "name": name,
+                        "version": version,
+                        "type": pkg,
+                        "path": str(path)
+                        })
         
     with open(output_file, "w") as f:
         json.dump(json_data, f, indent=4)
@@ -87,11 +90,10 @@ def main():
                 pkg = "npm"
                 for name, version in json_deps:
                     dependencies.append((name, version, pkg, repo))
-
+   
+    write_to_csv(directory_path, dependencies)
+    write_to_json(directory_path, dependencies)
     print(f"Found {repo_counter} repositories in {directory_path}")
-    
-    csv_file = write_to_csv(directory_path, dependencies)
-    json_file = write_to_json(directory_path, dependencies)
 
 if __name__ == "__main__":
     main()
