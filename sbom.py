@@ -34,6 +34,26 @@ def read_json(json_path: Path):
     
     return dependencies
 
+def read_package_lock(lock_path: Path):
+    data = json.loads(lock_path.read_text())
+    dependencies = []
+
+    packages = data.get("packages", {})
+
+    for package_path, package_info in packages.items():
+        if package_path == "":
+            continue
+        
+        if package_path.startswith("node_modules/"):
+            package_name = package_path.split("node_modules/")[-1]
+        else:
+            package_name = package_path
+
+        version = package_info.get("version")
+        if version:
+            dependencies.append((package_name, version, "npm"))
+    return dependencies
+
 
 def write_to_csv(directory_path: Path, dependencies):
     output_file = directory_path / "sbom.csv"
@@ -68,32 +88,59 @@ def write_to_json(directory_path: Path, dependencies):
 
 
 def main():
+    if len(sys.argv) != 2:
+        print("Missing arg PATH_TO_FOLDER\n\nUSAGE: python3 sbom.py PATH_TO_FOLDER")
+        sys.exit(1)
+
     directory_path = Path(sys.argv[1])
 
+    if not directory_path.exists():
+        print(f"Error: Folder {directory_path} does not exist.")
+        sys.exit(1)
+
     repo_counter = 0
-    dependencies = []
+    dependency_set = {}
 
     for repo in directory_path.iterdir():
         if repo.is_dir():
             repo_counter += 1
             txt = repo / "requirements.txt"
             json = repo / "package.json"
+            json_lock = repo / "package-lock.json"
 
             if txt.exists():
                 txt_deps = read_txt(txt)
-                pkg = "pip"
                 for name, version in txt_deps:
-                    dependencies.append((name, version, pkg, repo))
+                    add_if_not_present(dependency_set, name, version, "pip", repo)
             
-            if json.exists():
+            if json_lock.exists():
+                print("found lockfile")
+                lock_deps = read_package_lock(json_lock)
+                for name, version, pkg in lock_deps:
+                    add_if_not_present(dependency_set, name, version, "npm", repo)
+            elif json.exists():
                 json_deps =read_json(json)
-                pkg = "npm"
                 for name, version in json_deps:
-                    dependencies.append((name, version, pkg, repo))
-   
+                    add_if_not_present(dependency_set, name, version, "npm", repo)
+
+    dependencies = []
+    for key in dependency_set:
+        dep = dependency_set.get(key)
+        dependencies.append(dep)
+
     print(f"Found {repo_counter} repositories in {directory_path}")
     write_to_csv(directory_path, dependencies)
     write_to_json(directory_path, dependencies)
+
+def add_if_not_present(dependencies, name, version, package_system, repo):
+    key = name+version+package_system
+    if dependencies.get(key) != None:
+        return # Already added
+    else:
+        dependencies[key] = (name, version, package_system, repo)
+
+    return dependencies
+
 
 if __name__ == "__main__":
     main()
